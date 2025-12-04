@@ -164,6 +164,13 @@ function setupIntersectionObserver() {
 function setupContactFormHandling() {
     const form = document.getElementById("contact-form");
     const messageEl = document.getElementById("form-message");
+    const contactEmailEl = document.querySelector("[data-contact-email]");
+    const contactEmail = contactEmailEl
+        ? (contactEmailEl.getAttribute("data-contact-email")
+            || (contactEmailEl.getAttribute("href") || "").replace("mailto:", "")
+            || contactEmailEl.textContent
+            || "").trim()
+        : "kontakt.fabrykablysku@gmail.com";
 
     if (!form || !messageEl) return;
 
@@ -198,7 +205,7 @@ function setupContactFormHandling() {
 
         // Tryb lokalny - otwieramy klienta poczty z gotowym mailem
         if (window.location.protocol === "file:") {
-            const mailTo = "kontakt.fabrykablysku@gmail.com";
+            const mailTo = contactEmail || "kontakt.fabrykablysku@gmail.com";
             const mailSubject = "Zapytanie z formularza Fabryka Błysku";
             const mailBody =
                 "Imię i nazwisko: " + name + "\n" +
