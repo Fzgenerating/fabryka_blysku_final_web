@@ -1,7 +1,7 @@
 const GALLERY_FOLDER = "assets/img/gallery/";
 const GALLERY_MANIFEST_URL = "data/gallery.json";
 const SUPPORTED_EXTENSIONS = ["webp", "avif", "jpg", "jpeg", "png"];
-const DISCOVERY_LIMIT = 24;
+const DISCOVERY_LIMIT = 90;
 
 const galleryState = {
     images: [],
@@ -10,6 +10,7 @@ const galleryState = {
     autoDelay: 5500,
     isPaused: false,
     isAutoEnabled: true,
+    isLightboxOpen: false,
 };
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -25,6 +26,7 @@ async function initGallery() {
     bindNavigation(slider);
     bindViewSwitch();
     bindAutoplayToggle();
+    bindLightbox();
 
     galleryState.images = await resolveImages();
 
@@ -58,6 +60,13 @@ function bindNavigation(slider) {
         }
         disableAutoForManual();
     });
+
+    const image = document.getElementById("gallery-active-image");
+    if (image) {
+        image.addEventListener("click", function () {
+            openLightbox(galleryState.current);
+        });
+    }
 
     slider.addEventListener("mouseenter", function () {
         galleryState.isPaused = true;
@@ -144,6 +153,7 @@ function renderThumbnails(images) {
             switchView("slider");
             showSlide(index);
             disableAutoForManual();
+            openLightbox(index);
         });
 
         const imageEl = document.createElement("img");
@@ -197,6 +207,10 @@ function showSlide(index) {
 
     updateActiveThumb(index);
     updateActiveDot(index);
+
+    if (galleryState.isLightboxOpen) {
+        updateLightboxContent(active);
+    }
 }
 
 function updateActiveThumb(index) {
@@ -211,6 +225,86 @@ function updateActiveDot(index) {
     dots.forEach(function (dot, idx) {
         dot.classList.toggle("is-active", idx === index);
     });
+}
+
+function bindLightbox() {
+    const lightbox = document.getElementById("gallery-lightbox");
+    if (!lightbox) return;
+
+    const closeTriggers = lightbox.querySelectorAll("[data-lightbox-close]");
+    closeTriggers.forEach(function (trigger) {
+        trigger.addEventListener("click", closeLightbox);
+    });
+
+    const navButtons = lightbox.querySelectorAll("[data-lightbox-direction]");
+    navButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+            const direction = button.getAttribute("data-lightbox-direction");
+            if (direction === "next") {
+                nextSlide();
+            } else {
+                prevSlide();
+            }
+            updateLightboxContent(galleryState.images[galleryState.current]);
+        });
+    });
+
+    lightbox.addEventListener("click", function (event) {
+        if (event.target === lightbox) {
+            closeLightbox();
+        }
+    });
+
+    document.addEventListener("keydown", function (event) {
+        if (!galleryState.isLightboxOpen) return;
+        if (event.key === "Escape") {
+            closeLightbox();
+        }
+    });
+}
+
+function openLightbox(index) {
+    const lightbox = document.getElementById("gallery-lightbox");
+    if (!lightbox || !galleryState.images.length) return;
+
+    disableAutoForManual();
+    galleryState.isLightboxOpen = true;
+    document.body.classList.add("lightbox-open");
+    lightbox.removeAttribute("hidden");
+
+    showSlide(index);
+    updateLightboxContent(galleryState.images[galleryState.current]);
+
+    const closeButton = lightbox.querySelector(".gallery-lightbox-close");
+    if (closeButton) closeButton.focus();
+}
+
+function closeLightbox() {
+    const lightbox = document.getElementById("gallery-lightbox");
+    if (!lightbox) return;
+    galleryState.isLightboxOpen = false;
+    document.body.classList.remove("lightbox-open");
+    lightbox.setAttribute("hidden", "hidden");
+}
+
+function updateLightboxContent(active) {
+    if (!active) return;
+    const imageEl = document.getElementById("lightbox-image");
+    const counterEl = document.getElementById("lightbox-counter");
+    const nameEl = document.getElementById("lightbox-name");
+
+    if (imageEl) {
+        imageEl.src = active.src;
+        imageEl.alt = active.alt;
+    }
+
+    if (counterEl) {
+        counterEl.textContent = (galleryState.current + 1) + "/" + galleryState.images.length;
+    }
+
+    if (nameEl) {
+        nameEl.textContent = active.label || active.alt;
+    }
 }
 
 function nextSlide() {

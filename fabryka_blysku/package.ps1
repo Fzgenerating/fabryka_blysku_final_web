@@ -7,7 +7,8 @@ Set-Location $here
 if (Test-Path $Output) { Remove-Item $Output -Force }
 
 # Zbieramy wszystkie elementy poza repozytoryjnymi i samymi skryptami pakującymi
-$items = Get-ChildItem -Force | Where-Object { $_.Name -notin @('.git', '.gitignore', 'fabryka_blysku.zip', 'package.ps1', 'package.sh') }
+$exclude = @('.git', '.gitignore', 'fabryka_blysku.zip', 'package.ps1', 'package.sh')
+$items = Get-ChildItem -Force | Where-Object { $_.Name -notin $exclude }
 
 if (-not $items) {
     Write-Error "Brak plików do spakowania (katalog jest pusty?)."
