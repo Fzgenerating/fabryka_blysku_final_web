@@ -1,7 +1,8 @@
 const GALLERY_FOLDER = "assets/img/gallery/";
 const GALLERY_MANIFEST_URL = "data/gallery.json";
 const SUPPORTED_EXTENSIONS = ["webp", "avif", "jpg", "jpeg", "png"];
-const DISCOVERY_LIMIT = 24;
+const SLIDES_SUBFOLDER = "slides/";
+const DISCOVERY_LIMIT = 80;
 
 const galleryState = {
     images: [],
@@ -290,7 +291,11 @@ async function resolveImages() {
     if (discovered.length) return discovered;
 
     // Fallback: keep existing demo assets if available
-    const fallbackList = ["slide1.png", "slide2.png", "slide3.png"];
+    const fallbackList = [
+        `${SLIDES_SUBFOLDER}slide1.webp`,
+        `${SLIDES_SUBFOLDER}slide2.webp`,
+        `${SLIDES_SUBFOLDER}slide3.webp`,
+    ];
     return verifyImages(fallbackList);
 }
 
@@ -342,7 +347,7 @@ async function discoverImages() {
     for (let i = 1; i <= DISCOVERY_LIMIT; i += 1) {
         let existing = null;
         for (const ext of SUPPORTED_EXTENSIONS) {
-            const candidate = "slide" + i + "." + ext;
+            const candidate = SLIDES_SUBFOLDER + "slide" + i + "." + ext;
             const src = GALLERY_FOLDER + candidate;
             // eslint-disable-next-line no-await-in-loop
             if (await urlExists(src)) {
@@ -368,7 +373,8 @@ async function urlExists(url) {
 }
 
 function buildAltFromName(fileName) {
-    return fileName
+    const nameOnly = fileName.split("/").pop() || fileName;
+    return nameOnly
         .replace(/[-_]/g, " ")
         .replace(/\.[^.]+$/, "")
         .replace(/^\s+|\s+$/g, "")
