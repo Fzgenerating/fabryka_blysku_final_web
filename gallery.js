@@ -9,7 +9,8 @@ const galleryState = {
     autoTimer: null,
     autoDelay: 5500,
     isPaused: false,
-    isAutoEnabled: true,
+    isAutoEnabled: false,
+    hasLoadedFirst: false,
 };
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -19,6 +20,7 @@ document.addEventListener("DOMContentLoaded", function () {
 async function initGallery() {
     const slider = document.getElementById("gallery-slider");
     const thumbsContainer = document.getElementById("gallery-thumbs");
+    const loading = document.getElementById("gallery-loading");
 
     if (!slider || !thumbsContainer) return;
 
@@ -36,9 +38,13 @@ async function initGallery() {
 
     renderThumbnails(galleryState.images);
     renderDots(galleryState.images.length);
-    switchView("slider");
+    switchView("grid");
     showSlide(0);
     startAuto();
+
+    if (loading) {
+        loading.classList.add("is-active");
+    }
 
     window.addEventListener("resize", function () {
         const sliderCurrent = document.getElementById("gallery-slider");
@@ -149,6 +155,7 @@ function renderThumbnails(images) {
         const imageEl = document.createElement("img");
         imageEl.src = img.src;
         imageEl.alt = img.alt;
+        imageEl.loading = "lazy";
 
         button.appendChild(imageEl);
         container.appendChild(button);
@@ -182,6 +189,7 @@ function showSlide(index) {
     const counterEl = document.getElementById("gallery-counter");
     const nameEl = document.getElementById("gallery-name");
     const slider = document.getElementById("gallery-slider");
+    const loading = document.getElementById("gallery-loading");
 
     if (!imageEl || !counterEl || !nameEl || !slider) return;
 
@@ -190,6 +198,10 @@ function showSlide(index) {
 
     imageEl.onload = function () {
         updateAspectRatio(slider, imageEl);
+        if (!galleryState.hasLoadedFirst && loading) {
+            galleryState.hasLoadedFirst = true;
+            loading.classList.remove("is-active");
+        }
     };
 
     counterEl.textContent = (index + 1) + "/" + galleryState.images.length;
@@ -311,17 +323,18 @@ async function fetchManifest() {
 }
 
 async function verifyImages(list) {
-    const checked = [];
-    for (const entry of list) {
-        const normalized = normalizeImageEntry(entry);
-        if (!normalized) continue;
+    const normalizedEntries = list
+        .map(normalizeImageEntry)
+        .filter(Boolean);
 
-        const exists = await urlExists(normalized.src);
-        if (exists) {
-            checked.push(normalized);
-        }
-    }
-    return checked;
+    const results = await Promise.all(
+        normalizedEntries.map(async (normalized) => {
+            const exists = await urlExists(normalized.src);
+            return exists ? normalized : null;
+        })
+    );
+
+    return results.filter(Boolean);
 }
 
 function normalizeImageEntry(entry) {
@@ -359,11 +372,25 @@ async function discoverImages() {
 }
 
 async function urlExists(url) {
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        const response = await fetch(url, {
+            method: "HEAD",
+            cache: "force-cache",
+            signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        if (response.ok) return true;
+    } catch (error) {
+        // Fallback do klasycznej metody poniżej
+    }
+
     return new Promise((resolve) => {
         const img = new Image();
         img.onload = function () { resolve(true); };
         img.onerror = function () { resolve(false); };
-        img.src = url + (url.includes("?") ? "&" : "?") + "_ts=" + Date.now();
+        img.src = url;
     });
 }
 
