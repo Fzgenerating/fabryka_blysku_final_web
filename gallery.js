@@ -1,7 +1,7 @@
 const GALLERY_FOLDER = "assets/img/gallery/";
 const GALLERY_MANIFEST_URL = "data/gallery.json";
 const SUPPORTED_EXTENSIONS = ["webp", "avif", "jpg", "jpeg", "png"];
-const DISCOVERY_LIMIT = 24;
+const DISCOVERY_LIMIT = 120;
 
 const galleryState = {
     images: [],
@@ -298,6 +298,10 @@ async function resolveImages() {
     const verifiedManifest = await verifyImages(manifest);
     if (verifiedManifest.length) return verifiedManifest;
 
+    const listed = await fetchListedImages();
+    const verifiedListed = await verifyImages(listed);
+    if (verifiedListed.length) return verifiedListed;
+
     const discovered = await discoverImages();
     if (discovered.length) return discovered;
 
@@ -320,6 +324,35 @@ async function fetchManifest() {
         console.warn("Nie udało się pobrać manifestu galerii", error);
         return [];
     }
+}
+
+async function fetchListedImages() {
+    const listingFiles = ["drzewko.txt", "lista_plikow.txt"];
+    for (const file of listingFiles) {
+        // eslint-disable-next-line no-await-in-loop
+        const listing = await fetchListingFile(file);
+        if (listing.length) return listing;
+    }
+    return [];
+}
+
+async function fetchListingFile(fileName) {
+    try {
+        const response = await fetch(GALLERY_FOLDER + fileName, { cache: "no-store" });
+        if (!response.ok) return [];
+        const text = await response.text();
+        return extractFilesFromListing(text);
+    } catch (error) {
+        console.warn("Nie udało się odczytać listy plików galerii", error);
+        return [];
+    }
+}
+
+function extractFilesFromListing(text) {
+    if (!text) return [];
+    const matches = text.match(/([\w.-]+\.(?:webp|avif|jpg|jpeg|png))/gi) || [];
+    const unique = Array.from(new Set(matches));
+    return unique;
 }
 
 async function verifyImages(list) {
